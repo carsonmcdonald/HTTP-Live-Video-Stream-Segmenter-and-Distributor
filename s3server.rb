@@ -21,6 +21,9 @@ require 'ftools'
 require 'rubygems'
 require 'right_aws'
 
+AWS_S3_ID="your s3 id"
+AWS_S3_KEY="your s3 private key"
+
 def create_index(segment_duration, output_prefix, http_prefix, first_segment, last_segment, stream_end)
   File.open("tmp.index.m3u8", 'w') do |index_file| 
     index_file.write("#EXTM3U\n")
@@ -39,7 +42,7 @@ def create_index(segment_duration, output_prefix, http_prefix, first_segment, la
 end
 
 def push_to_s3(index, output_directory, bucket_name, key_prefix, output_prefix, last_segment)
-  s3 = RightAws::S3Interface.new('<AWS Key>', '<AWS Secret>')
+  s3 = RightAws::S3Interface.new(AWS_S3_ID, AWS_S3_KEY)
 
   video_filename = "#{output_directory}/#{output_prefix}-%05u.ts" % last_segment
   puts "Pushing #{video_filename} to s3://#{bucket_name}/#{key_prefix}/#{output_prefix}-%05u.ts" % last_segment
@@ -47,7 +50,7 @@ def push_to_s3(index, output_directory, bucket_name, key_prefix, output_prefix, 
   puts "Done pushing video file"
   
   puts "Pushing tmp.index.m3u8 to s3://#{bucket_name}/#{key_prefix}/#{index}"
-  s3.put(bucket_name, index, File.open("tmp.index.m3u8"), {'x-amz-acl' => 'public-read', 'content-type' => 'video/MP2T'})
+  s3.put(bucket_name, key_prefix + "/" + index, File.open("tmp.index.m3u8"), {'x-amz-acl' => 'public-read', 'content-type' => 'video/MP2T'})
   puts "Done pushing index file"
 end
 
