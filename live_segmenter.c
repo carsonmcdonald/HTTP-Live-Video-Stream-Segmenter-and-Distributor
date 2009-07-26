@@ -19,11 +19,18 @@
 
 #include <stdio.h>
 #include <string.h>
-#include <sys/socket.h>
-#include <arpa/inet.h>
 #include <unistd.h>
 
 #include "libavformat/avformat.h"
+
+struct config_info
+{
+  const char *input_filename;
+  int segment_length;
+  const char *temp_directory;
+  const char *filename_prefix;
+  const char *encoding_profile;
+};
 
 static AVStream *add_output_stream(AVFormatContext *output_format_context, AVStream *input_stream) 
 {
@@ -34,7 +41,7 @@ static AVStream *add_output_stream(AVFormatContext *output_format_context, AVStr
   output_stream = av_new_stream(output_format_context, 0);
   if (!output_stream) 
   {
-    fprintf(stderr, "Could not allocate stream\n");
+    fprintf(stderr, "Segmenter error: Could not allocate stream\n");
     exit(1);
   }
 
@@ -92,123 +99,77 @@ static AVStream *add_output_stream(AVFormatContext *output_format_context, AVStr
   return output_stream;
 }
 
-int write_index_file(const char index[], const unsigned int segment_duration, const char output_directory[], const char output_prefix[], const char http_prefix[], const unsigned int first_segment, const unsigned int last_segment, const int end, const char bucket_name[], const char key_prefix[])
+void output_transfer_command(const unsigned int first_segment, const unsigned int last_segment, const int end, const char *encoding_profile)
 {
   char buffer[1024 * 10];
   memset(buffer, 0, sizeof(char) * 1024 * 10);
-  sprintf(buffer, "%s, %s, %d, %s, %s, %d, %d, %d, %s, %s", index, output_directory, segment_duration, output_prefix, http_prefix, first_segment, last_segment, end, bucket_name, key_prefix);
 
-  fprintf(stderr, "Sending: %s\n", buffer);
+  sprintf(buffer, "%d, %d, %d, %s", first_segment, last_segment, end, encoding_profile);
 
-  int sock;
-  if ((sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0)
-  {
-    fprintf(stderr, "Could not open socket.");
-    return -1;
-  }
-
-  const char *serverIP = "127.0.0.1";  
-  int serverPort = 10234;
-
-  struct sockaddr_in serverAddress;
-  memset(&serverAddress, 0, sizeof(serverAddress));
-  serverAddress.sin_family      = AF_INET;
-  serverAddress.sin_addr.s_addr = inet_addr(serverIP);
-  serverAddress.sin_port        = htons(serverPort);
-
-  if (connect(sock, (struct sockaddr *) &serverAddress, sizeof(serverAddress)) < 0)
-  {
-    fprintf(stderr, "Could not connect to socket.");
-    return -1;
-  }
-
-  int buffer_len = strlen(buffer);
-  if (send(sock, buffer, buffer_len, 0) != buffer_len)
-  {
-    fprintf(stderr, "Could not send command.");
-    return -1;
-  }
-
-  close(sock);
-
-  return 0;
+  fprintf(stderr, "segmenter: %s\n\r", buffer);
 }
 
 int main(int argc, char **argv)
 {
-  int i;
-
-  if (argc != 9) 
+  if(argc != 5)
   {
-    fprintf(stderr, "Usage: %s <input MPEG-TS file> <segment duration in seconds> <output directory> <output MPEG-TS file prefix> <output m3u8 index file> <http prefix> <bucket name> <key prefix>\n", argv[0]);
-    exit(1);
+    fprintf(stderr, "Usage: %s <segment length> <output location> <filename prefix> <encoding profile>\n", argv[0]);
+    return 1;
   }
 
-  const char *input = argv[1];
-  if (!strcmp(input, "-")) 
-  {
-    fprintf(stderr, "Using piped input\n");
-    input = "pipe://1";
-  }
+  struct config_info config;
 
-  char *segment_duration_check;
-  double segment_duration = strtoll(argv[2], &segment_duration_check, 10);
-  if (segment_duration_check == argv[2]) 
-  {
-    fprintf(stderr, "Segment duration time (%s) invalid\n", argv[2]);
-    exit(1);
-  }
-  const char *output_directory = argv[3];
-  const char *output_prefix = argv[4];
-  const char *index = argv[5];
-  const char *http_prefix = argv[6];
-  const char *bucket_name = argv[7];
-  const char *key_prefix = argv[8];
+  memset(&config, 0, sizeof(struct config_info));
 
-  char *output_filename = malloc(sizeof(char) * (strlen(output_directory) + 1 + strlen(output_prefix) + 10));
+  config.segment_length = atoi(argv[1]); 
+  config.temp_directory = argv[2];
+  config.filename_prefix = argv[3];
+  config.encoding_profile = argv[4];
+  config.input_filename = "pipe://1";
+
+  char *output_filename = malloc(sizeof(char) * (strlen(config.temp_directory) + 1 + strlen(config.filename_prefix) + 10));
   if (!output_filename) 
   {
-    fprintf(stderr, "Could not allocate space for output filenames\n");
+    fprintf(stderr, "Segmenter error: Could not allocate space for output filenames\n");
     exit(1);
   }
 
   // ------------------ Done parsing input --------------
-
 
   av_register_all();
 
   AVInputFormat *input_format = av_find_input_format("mpegts");
   if (!input_format) 
   {
-    fprintf(stderr, "Could not find MPEG-TS demuxer\n");
+    fprintf(stderr, "Segmenter error: Could not find MPEG-TS demuxer\n");
     exit(1);
   }
 
   AVFormatContext *input_context = NULL;
-  int ret = av_open_input_file(&input_context, input, input_format, 0, NULL);
+  int ret = av_open_input_file(&input_context, config.input_filename, input_format, 0, NULL);
   if (ret != 0) 
   {
-    fprintf(stderr, "Could not open input file, make sure it is an mpegts file: %d\n", ret);
+    fprintf(stderr, "Segmenter error: Could not open input file, make sure it is an mpegts file: %d\n", ret);
     exit(1);
   }
 
   if (av_find_stream_info(input_context) < 0) 
   {
-    fprintf(stderr, "Could not read stream information\n");
+    fprintf(stderr, "Segmenter error: Could not read stream information\n");
     exit(1);
   }
 
   AVOutputFormat *output_format = guess_format("mpegts", NULL, NULL);
   if (!output_format) 
   {
-    fprintf(stderr, "Could not find MPEG-TS muxer\n");
+    fprintf(stderr, "Segmenter error: Could not find MPEG-TS muxer\n");
     exit(1);
   }
 
   AVFormatContext *output_context = avformat_alloc_context();
   if (!output_context) 
   {
-    fprintf(stderr, "Could not allocated output context");
+    fprintf(stderr, "Segmenter error: Could not allocated output context");
     exit(1);
   }
   output_context->oformat = output_format;
@@ -218,6 +179,8 @@ int main(int argc, char **argv)
 
   AVStream *video_stream;
   AVStream *audio_stream;
+
+  int i;
 
   for (i = 0; i < input_context->nb_streams && (video_index < 0 || audio_index < 0); i++) 
   {
@@ -240,41 +203,39 @@ int main(int argc, char **argv)
 
   if (av_set_parameters(output_context, NULL) < 0) 
   {
-    fprintf(stderr, "Invalid output format parameters\n");
+    fprintf(stderr, "Segmenter error: Invalid output format parameters\n");
     exit(1);
   }
 
-  dump_format(output_context, 0, output_prefix, 1);
+  dump_format(output_context, 0, config.filename_prefix, 1);
 
   AVCodec *codec = avcodec_find_decoder(video_stream->codec->codec_id);
   if (!codec) 
   {
-    fprintf(stderr, "Could not find video decoder, key frames will not be honored\n");
+    fprintf(stderr, "Segmenter error: Could not find video decoder, key frames will not be honored\n");
   }
 
   if (avcodec_open(video_stream->codec, codec) < 0) 
   {
-    fprintf(stderr, "Could not open video decoder, key frames will not be honored\n");
+    fprintf(stderr, "Segmenter error: Could not open video decoder, key frames will not be honored\n");
   }
 
   unsigned int output_index = 1;
-  snprintf(output_filename, strlen(output_directory) + 1 + strlen(output_prefix) + 10, "%s/%s-%05u.ts", output_directory, output_prefix, output_index++);
+  snprintf(output_filename, strlen(config.temp_directory) + 1 + strlen(config.filename_prefix) + 10, "%s/%s-%05u.ts", config.temp_directory, config.filename_prefix, output_index++);
   if (url_fopen(&output_context->pb, output_filename, URL_WRONLY) < 0) 
   {
-    fprintf(stderr, "Could not open '%s'\n", output_filename);
+    fprintf(stderr, "Segmenter error: Could not open '%s'\n", output_filename);
     exit(1);
   }
 
   if (av_write_header(output_context)) 
   {
-    fprintf(stderr, "Could not write mpegts header to first output file\n");
+    fprintf(stderr, "Segmenter error: Could not write mpegts header to first output file\n");
     exit(1);
   }
 
   unsigned int first_segment = 1;
   unsigned int last_segment = 0;
-  int write_index = 1;
-  write_index = !write_index_file(index, segment_duration, output_directory, output_prefix, http_prefix, first_segment, last_segment, 0, bucket_name, key_prefix);
 
   double prev_segment_time = 0;
   int decode_done;
@@ -291,7 +252,7 @@ int main(int argc, char **argv)
 
     if (av_dup_packet(&packet) < 0) 
     {
-      fprintf(stderr, "Could not duplicate packet");
+      fprintf(stderr, "Segmenter error: Could not duplicate packet");
       av_free_packet(&packet);
       break;
     }
@@ -310,20 +271,17 @@ int main(int argc, char **argv)
     }
 
     // done writing the current file?
-    if (segment_time - prev_segment_time >= segment_duration) 
+    if (segment_time - prev_segment_time >= config.segment_length) 
     {
       put_flush_packet(output_context->pb);
       url_fclose(output_context->pb);
 
-      if (write_index) 
-      {
-        write_index = !write_index_file(index, segment_duration, output_directory, output_prefix, http_prefix, first_segment, ++last_segment, 0, bucket_name, key_prefix);
-      }
+      output_transfer_command(first_segment, ++last_segment, 0, config.encoding_profile);
 
-      snprintf(output_filename, strlen(output_directory) + 1 + strlen(output_prefix) + 10, "%s/%s-%05u.ts", output_directory, output_prefix, output_index++);
+      snprintf(output_filename, strlen(config.temp_directory) + 1 + strlen(config.filename_prefix) + 10, "%s/%s-%05u.ts", config.temp_directory, config.filename_prefix, output_index++);
       if (url_fopen(&output_context->pb, output_filename, URL_WRONLY) < 0) 
       {
-        fprintf(stderr, "Could not open '%s'\n", output_filename);
+        fprintf(stderr, "Segmenter error: Could not open '%s'\n", output_filename);
         break;
       }
 
@@ -333,13 +291,13 @@ int main(int argc, char **argv)
     ret = av_write_frame(output_context, &packet);
     if (ret < 0) 
     {
-      fprintf(stderr, "Could not write frame of stream: %d\n", ret);
+      fprintf(stderr, "Segmenter error: Could not write frame of stream: %d\n", ret);
       av_free_packet(&packet);
       //break; removed for streaming support
     }
     else if (ret > 0) 
     {
-      fprintf(stderr, "End of stream requested\n");
+      fprintf(stderr, "Segmenter error: End of stream requested\n");
       av_free_packet(&packet);
       break;
     }
@@ -360,10 +318,7 @@ int main(int argc, char **argv)
   url_fclose(output_context->pb);
   av_free(output_context);
 
-  if (write_index) 
-  {
-    write_index_file(index, segment_duration, output_directory, output_prefix, http_prefix, first_segment, ++last_segment, 1, bucket_name, key_prefix);
-  }
+  output_transfer_command(first_segment, ++last_segment, 1, config.encoding_profile);
 
   return 0;
 }

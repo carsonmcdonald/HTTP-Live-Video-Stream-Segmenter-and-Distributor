@@ -1,5 +1,5 @@
 all:
-	gcc -Wall -g live_upload.c -o live_upload -lavformat -lavcodec -lavutil -lbz2 -lm -lz -lfaac -lmp3lame -lx264 -lfaad
+	gcc -Wall -g live_segmenter.c -o live_segmenter -lavformat -lavcodec -lavutil -lbz2 -lm -lz -lfaac -lmp3lame -lx264 -lfaad -lconfig
 
 clean:
-	rm -f live_upload
+	rm -f live_segmenter
