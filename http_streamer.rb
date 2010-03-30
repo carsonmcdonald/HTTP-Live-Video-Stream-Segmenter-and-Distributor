@@ -113,7 +113,7 @@ def create_index(log, index_segment_count, segment_duration, output_prefix, enco
 
     first_segment.upto(last_segment) do | segment_index |
       if segment_index > last_segment - index_segment_count
-        index_file.write("#EXTINF:#{segment_duration}\n")
+        index_file.write("#EXTINF:#{segment_duration},\n")
         index_file.write("#{http_prefix}#{output_prefix}_#{encoding_profile}-%05u.ts\n" % segment_index)
       end
     end
