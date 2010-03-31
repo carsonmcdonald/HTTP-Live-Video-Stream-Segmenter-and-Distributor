@@ -13,6 +13,7 @@ The project includes a ruby script and a C program that use FFMpeg to encode and
 
 - Creates both single and variable bitrate outputs
 - Transfer encoded segments via copy, FTP, SCP or transfer to AWS S3
+- Sending the INT signal to the segmenter process will cause it to terminate gracefully 
 
 ## REQUIREMENTS
 
