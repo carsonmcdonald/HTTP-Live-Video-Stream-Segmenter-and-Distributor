@@ -17,7 +17,7 @@ The project includes a ruby script and a C program that use FFMpeg to encode and
 
 ## REQUIREMENTS
 
-FFMpeg is the primary external requirement for the ruby script. The segmenter needs libavformat to compile and that can be obtained by installing FFMpeg. The script also needs the following gems installed:
+FFMpeg is the primary external requirement for the ruby script. The segmenter needs libavformat to compile and that can be obtained by installing FFMpeg. The script also needs the following gems installed if you want to be able to use SCP or S3 as transfer options:
 
 - *Net::SCP*
 	See http://net-ssh.rubyforge.org/ for more information. To intall run gem install net-scp

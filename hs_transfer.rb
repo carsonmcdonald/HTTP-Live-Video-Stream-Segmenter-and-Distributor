@@ -17,9 +17,6 @@
 #
 
 require 'rubygems'
-require 'net/scp'
-require 'net/ftp'
-require 'right_aws'
 
 class HSTransfer
 
@@ -69,6 +66,33 @@ class HSTransfer
         @log.info('Transfer done');
       end
       @log.info('Transfer thread terminated');
+    end
+  end
+
+  def self.can_scp
+    begin
+      require 'net/scp'
+      return true
+    rescue LoadError
+      return false
+    end
+  end
+
+  def self.can_ftp
+    begin
+      require 'net/ftp'
+      return true
+    rescue LoadError
+      return false
+    end
+  end
+
+  def self.can_s3
+    begin
+      require 'right_aws'
+      return true
+    rescue LoadError
+      return false
     end
   end
 
@@ -131,18 +155,21 @@ class HSTransfer
        when 'copy'
          File.copy(source_file, transfer_config['directory'] + '/' + destination_file)
        when 'ftp'
+         require 'net/ftp'
          Net::FTP.open(transfer_config['remote_host']) do |ftp|
            ftp.login(transfer_config['user_name'], transfer_config['password'])
            files = ftp.chdir(transfer_config['directory'])
            ftp.putbinaryfile(source_file, destination_file)
          end
        when 'scp'
+         require 'net/scp'
          if transfer_config.has_key?('password')
            Net::SCP.upload!(transfer_config['remote_host'], transfer_config['user_name'], source_file, transfer_config['directory'] + '/' + destination_file, :password => transfer_config['password'])
          else
            Net::SCP.upload!(transfer_config['remote_host'], transfer_config['user_name'], source_file, transfer_config['directory'] + '/' + destination_file)
          end
        when 's3'
+         require 'right_aws'
          s3 = RightAws::S3Interface.new(transfer_config['aws_api_key'], transfer_config['aws_api_secret'])
 
          content_type = source_file =~ /.*\.m3u8$/ ? 'application/x-mpegURL' : 'video/MP2T'

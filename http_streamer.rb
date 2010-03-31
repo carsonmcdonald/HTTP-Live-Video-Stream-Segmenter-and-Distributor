@@ -20,29 +20,6 @@ require 'hs_transfer'
 require 'hs_config'
 require 'hs_encoder'
 
-def log_setup(config)
-  if config['log_type'] == 'FILE'
-    log = Logger.new(config['log_file'])
-  else
-    log = Logger.new(STDOUT)
-  end
-
-  case config['log_level']
-    when 'DEBUG'
-      log.level = Logger::DEBUG
-    when 'INFO'
-      log.level = Logger::INFO
-    when 'WARN'
-      log.level = Logger::WARN
-    when 'ERROR'
-      log.level = Logger::ERROR
-    else
-      log.level = Logger::DEBUG
-  end
-
-  return log
-end
-
 # **************************************************************
 #
 # Main
@@ -60,7 +37,7 @@ end
 
 config = HSConfig::load( ARGV[0] )
 
-log = log_setup( config )
+log = HSConfig::log_setup( config )
 
 log.info('HTTP Streamer started')
 
