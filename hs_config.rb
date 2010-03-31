@@ -62,13 +62,68 @@ class HSConfig
   private 
 
   def sanity_check(config)
-    # TODO
-   
     log = HSConfig::log_setup(config)
 
-    log.info("No FTP transfers available. Missing FTP gem.") if !HSTransfer::can_ftp
-    log.info("No SCP transfers available. Missing SCP gem.") if !HSTransfer::can_scp
-    log.info("No S3 transfers available. Missing AWS gem.") if !HSTransfer::can_s3
+    if config['log_type'] == 'FILE' and !File.writable? config['log_file']
+      log.error("The given log file can not be written to: #{config['log_file']}")
+      raise 
+    end
+
+    if !File.directory? config['temp_dir'] or !File.writable? config['temp_dir']
+      log.error("Temp directory does not exist or can not be written to: #{config['temp_dir']}")
+      raise 
+    end
+
+    if !File.readable? config['input_location']
+      log.error("The input file can not be read: #{config['input_location']}")
+      raise 
+    end
+
+    if config['segment_length'] < 3
+      log.error("Segment length can not be less than 3 seconds: #{config['segment_length']}")
+      raise 
+    end
+
+    if config['encoding_profile'].is_a?(Array) 
+      config['encoding_profile'].each do |ep|
+        if config[ep].nil?
+          log.error("The given encoding profile was not found in the config: #{ep}")
+          raise 
+        end
+      end
+    else
+      if config[config['encoding_profile']].nil?
+        log.error("The given encoding profile was not found in the config: #{config['encoding_profile']}")
+        raise 
+      end
+    end
+
+    if config[config['transfer_profile']].nil?
+      log.error("The given transfer profile was not found in the config: #{config['transfer_profile']}")
+      raise 
+    end
+
+    if config[config['transfer_profile']]['transfer_type'] != 'ftp' and config[config['transfer_profile']]['transfer_type'] != 'scp' and
+       config[config['transfer_profile']]['transfer_type'] != 's3' and config[config['transfer_profile']]['transfer_type'] != 'copy'
+      log.error("The given transfer type is not known: #{config[config['transfer_profile']]['transfer_type']}")
+      raise 
+    end
+
+    if !HSTransfer::can_ftp and config[config['transfer_profile']]['transfer_type'] == 'ftp'
+      log.error("The given transfer type is not available: #{config[config['transfer_profile']]['transfer_type']}")
+      raise 
+    end
+
+    if !HSTransfer::can_scp and config[config['transfer_profile']]['transfer_type'] == 'scp'
+      log.error("The given transfer type is not available: #{config[config['transfer_profile']]['transfer_type']}")
+      raise 
+    end
+
+    if !HSTransfer::can_s3 and config[config['transfer_profile']]['transfer_type'] == 's3'
+      log.error("The given transfer type is not available: #{config[config['transfer_profile']]['transfer_type']}")
+      raise 
+    end
+
   end
 
 end
