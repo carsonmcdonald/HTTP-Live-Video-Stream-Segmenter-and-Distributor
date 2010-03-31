@@ -24,11 +24,6 @@ require 'open3'
 
 class HSEncoder
 
-  def self.init_and_start_encoding(log, config, hs_transfer)
-    hsencoder = HSEncoder.new(log, config, hs_transfer)
-    hsencoder.start_encoding
-  end 
-
   def initialize(log, config, hs_transfer)
     @hs_transfer = hs_transfer
     @log = log
@@ -49,6 +44,11 @@ class HSEncoder
     end
   end
 
+  def stop_encoding
+    @log.info("Stoping encoder.")
+    @stop_stdin.print 'q' if !@stop_stdin.nil?
+  end
+
   private 
 
   def process_master_encoding(encoding_pipes)
@@ -58,7 +58,8 @@ class HSEncoder
 
     stderr_thread = nil
 
-    Open3.popen3(command) do |stdin, stdout, stderr, test|
+    Open3.popen3(command) do |stdin, stdout, stderr|
+      @stop_stdin = stdin
       stderr_thread = Thread.new do
         stderr.each("\r") do |line|
           if line =~ /ffmpeg/i 
@@ -93,8 +94,12 @@ class HSEncoder
   def execute_ffmpeg_and_segmenter(command, encoding_profile, encoding_pipes)
     @log.debug("Executing: #{command}")
 
-    Open3.popen3(command) do |stdin, stdout, stderr, test|
-      encoding_pipes << stdin if encoding_pipes != nil
+    Open3.popen3(command) do |stdin, stdout, stderr|
+      if encoding_pipes != nil
+        encoding_pipes << stdin
+      else
+        @stop_stdin = stdin
+      end
 
       stderr.each("\r") do |line|
         if line =~ /segmenter: (.*)/i

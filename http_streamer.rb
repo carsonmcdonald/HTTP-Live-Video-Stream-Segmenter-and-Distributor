@@ -49,6 +49,10 @@ end
 #
 # **************************************************************
 
+hsencoder = nil
+
+trap('INT') { hsencoder.stop_encoding if !hsencoder.nil?  }
+
 if ARGV.length != 1
   puts "Usage: http_streamer.rb <config file>"
   exit 1
@@ -62,7 +66,8 @@ log.info('HTTP Streamer started')
 
 hstransfer = HSTransfer::init_and_start_transfer_thread( log, config )
 
-HSEncoder::init_and_start_encoding( log, config, hstransfer )
+hsencoder = HSEncoder.new(log, config, hstransfer)
+hsencoder.start_encoding
 
 hstransfer.stop_transfer_thread
 
