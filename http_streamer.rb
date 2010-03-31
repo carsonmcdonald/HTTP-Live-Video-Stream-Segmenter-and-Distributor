@@ -16,9 +16,9 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #
 
-require 'hs_transfer.rb'
-require 'hs_config.rb'
-require 'hs_encoder.rb'
+require 'hs_transfer'
+require 'hs_config'
+require 'hs_encoder'
 
 def log_setup(config)
   if config['log_type'] == 'FILE'
@@ -54,20 +54,16 @@ if ARGV.length != 1
   exit 1
 end
 
-config = HSConfig.new( File.open(ARGV[0]) )
+config = HSConfig::load( ARGV[0] )
 
-log = log_setup(config)
+log = log_setup( config )
 
 log.info('HTTP Streamer started')
 
-transfer_queue = Queue.new
+hstransfer = HSTransfer::init_and_start_transfer_thread( log, config )
 
-hstransfer = HSTransfer.new( transfer_queue )
-hstransfer.start_transfer( log )
+HSEncoder::init_and_start_encoding( log, config, hstransfer )
 
-hsencoder = HSEncoder.new( transfer_queue )
-hsencoder.run_encoder( log, config )
-
-hstransfer.stop_transfer
+hstransfer.stop_transfer_thread
 
 log.info('HTTP Streamer terminated')

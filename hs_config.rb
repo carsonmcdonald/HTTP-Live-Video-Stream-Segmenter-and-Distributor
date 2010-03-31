@@ -20,6 +20,10 @@ require 'yaml'
 
 class HSConfig
 
+  def self.load( config_file )
+    HSConfig.new( config_file )
+  end
+
   def initialize(config_file)
     @config = YAML::load( File.open(ARGV[0]) )
     sanity_check(@config)

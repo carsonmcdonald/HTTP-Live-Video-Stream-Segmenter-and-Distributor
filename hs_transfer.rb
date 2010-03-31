@@ -23,53 +23,74 @@ require 'right_aws'
 
 class HSTransfer
 
-  def initialize(transfer_queue)
-    @transfer_queue = transfer_queue
+  QUIT='quit'
+  MULTIRATE_INDEX='mr_index'
+
+  def self.init_and_start_transfer_thread(log, config)
+    hstransfer = HSTransfer.new(log, config)
+    hstransfer.start_transfer_thread
+    return hstransfer
   end
 
-  def stop_transfer
-    @transfer_queue << 'quit'
+  def <<(transfer_item)
+    @transfer_queue << transfer_item
+  end
+
+  def stop_transfer_thread
+    @transfer_queue << QUIT
     @transfer_thread.join
   end
 
-  def start_transfer(log)
-    @transfer_thread = Thread.new do
-      log.info('Transfer thread started');
-      while (value = @transfer_queue.pop)
-        break if value == 'quit'
-        log.info('Transfer initiated');
-        log.debug(value)
+  def initialize(log, config)
+    @transfer_queue = Queue.new
+    @log = log
+    @config = config
+  end
 
-        begin
-          run_transfer(log, config, value)
-        rescue
-          log.error("Error running transfer: " + $!)
+  def start_transfer_thread
+    @transfer_thread = Thread.new do
+      @log.info('Transfer thread started');
+      while (value = @transfer_queue.pop)
+        @log.info('Transfer initiated');
+        @log.debug(value)
+
+        if value == QUIT
+          break
+        elsif value == MULTIRATE_INDEX
+          create_create_and_transfer_multirate_index
+        else
+          begin
+            create_index_and_run_transfer(value)
+          rescue
+            @log.error("Error running transfer: " + $!)
+          end
         end
 
-        log.info('Transfer done');
+        @log.info('Transfer done');
       end
-      log.info('Transfer thread terminated');
+      @log.info('Transfer thread terminated');
     end
   end
 
-  def create_and_transfer_multirate_index(log, config)
+  private
+
+  def create_and_transfer_multirate_index
     File.open("tmp.index.multi.m3u8", 'w') do |index_file|
       index_file.write("#EXTM3U\n")
 
-      config['encoding_profile'].each do |encoding_profile_name|
-        encoding_profile = config[encoding_profile_name]
+      @config['encoding_profile'].each do |encoding_profile_name|
+        encoding_profile = @config[encoding_profile_name]
         index_file.write("#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=#{encoding_profile['bandwidth']}\n")
-        index_name = "%s_%s.m3u8" % [config['index_prefix'], encoding_profile_name]
-        index_file.write("#{config['url_prefix']}#{index_name}\n")
+        index_name = "%s_%s.m3u8" % [@config['index_prefix'], encoding_profile_name]
+        index_file.write("#{@config['url_prefix']}#{index_name}\n")
       end
     end
 
-    transfer_file(log, config, "tmp.index.multi.m3u8", "#{config["index_prefix"]}_multi.m3u8")
+    transfer_file("tmp.index.multi.m3u8", "#{@config["index_prefix"]}_multi.m3u8")
   end
 
-
-  def create_index(log, index_segment_count, segment_duration, output_prefix, encoding_profile, http_prefix, first_segment, last_segment, stream_end)
-    log.debug('Creating index');
+  def create_index(index_segment_count, segment_duration, output_prefix, encoding_profile, http_prefix, first_segment, last_segment, stream_end)
+    @log.debug('Creating index');
 
     File.open("tmp.index.#{encoding_profile}.m3u8", 'w') do |index_file|
       index_file.write("#EXTM3U\n")
@@ -86,26 +107,25 @@ class HSTransfer
       index_file.write("#EXT-X-ENDLIST") if stream_end
     end
 
-    log.debug('Done creating index');
+    @log.debug('Done creating index');
   end
 
-
-  def run_transfer(log, config, value)
+  def create_index_and_run_transfer(value)
     (first_segment, last_segment, stream_end, encoding_profile) = value.strip.split(%r{,\s*})
-    create_index(log, config['index_segment_count'], config['segment_length'], config['segment_prefix'], encoding_profile, config['url_prefix'], first_segment.to_i, last_segment.to_i, stream_end.to_i == 1)
+    create_index(@config['index_segment_count'], @config['segment_length'], @config['segment_prefix'], encoding_profile, @config['url_prefix'], first_segment.to_i, last_segment.to_i, stream_end.to_i == 1)
 
     # Transfer the index
-    final_index = "%s_%s.m3u8" % [config['index_prefix'], encoding_profile]
-    transfer_file(log, config, "tmp.index.#{encoding_profile}.m3u8", "#{final_index}")
+    final_index = "%s_%s.m3u8" % [@config['index_prefix'], encoding_profile]
+    transfer_file("tmp.index.#{encoding_profile}.m3u8", "#{final_index}")
 
     # Transfer the video stream
-    video_filename = "#{config['temp_dir']}/#{config['segment_prefix']}_#{encoding_profile}-%05u.ts" % last_segment.to_i
-    dest_video_filename = "#{config['segment_prefix']}_#{encoding_profile}-%05u.ts" % last_segment.to_i
-    transfer_file(log, config, video_filename, dest_video_filename)
+    video_filename = "#{@config['temp_dir']}/#{@config['segment_prefix']}_#{encoding_profile}-%05u.ts" % last_segment.to_i
+    dest_video_filename = "#{@config['segment_prefix']}_#{encoding_profile}-%05u.ts" % last_segment.to_i
+    transfer_file(video_filename, dest_video_filename)
   end
 
-  def transfer_file(log, config, source_file, destination_file)
-     transfer_config = config[config['transfer_profile']]
+  def transfer_file(source_file, destination_file)
+     transfer_config = @config[@config['transfer_profile']]
 
      case transfer_config['transfer_type']
        when 'copy'
@@ -127,11 +147,11 @@ class HSTransfer
 
          content_type = source_file =~ /.*\.m3u8$/ ? 'application/x-mpegURL' : 'video/MP2T'
 
-         log.debug("Content type: #{content_type}")
+         @log.debug("Content type: #{content_type}")
 
          s3.put(transfer_config['bucket_name'], "#{transfer_config['key_prefix']}/#{destination_file}", File.open(source_file), {'x-amz-acl' => 'public-read', 'content-type' => content_type})
        else
-         log.error("Unknown transfer type: #{transfer_config['transfer_type']}")
+         @log.error("Unknown transfer type: #{transfer_config['transfer_type']}")
      end
 
      File.unlink(source_file)
