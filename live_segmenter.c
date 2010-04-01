@@ -304,7 +304,7 @@ int main(int argc, char **argv)
     }
     else if (ret > 0) 
     {
-      fprintf(stderr, "Segmenter error: End of stream requested\n");
+      fprintf(stderr, "Segmenter info: End of stream requested\n");
       av_free_packet(&packet);
       break;
     }
