@@ -295,12 +295,10 @@ int main(int argc, char **argv)
       prev_segment_time = segment_time;
     }
 
-    ret = av_write_frame(output_context, &packet);
+    ret = av_interleaved_write_frame(output_context, &packet);
     if (ret < 0) 
     {
       fprintf(stderr, "Segmenter error: Could not write frame of stream: %d\n", ret);
-      av_free_packet(&packet);
-      //break; removed for streaming support
     }
     else if (ret > 0) 
     {
