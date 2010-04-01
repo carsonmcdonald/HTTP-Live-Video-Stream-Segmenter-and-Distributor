@@ -213,15 +213,18 @@ int main(int argc, char **argv)
 
   dump_format(output_context, 0, config.filename_prefix, 1);
 
-  AVCodec *codec = avcodec_find_decoder(video_stream->codec->codec_id);
-  if (!codec) 
+  if(video_index >= 0)
   {
-    fprintf(stderr, "Segmenter error: Could not find video decoder, key frames will not be honored\n");
-  }
+    AVCodec *codec = avcodec_find_decoder(video_stream->codec->codec_id);
+    if (!codec) 
+    {
+      fprintf(stderr, "Segmenter error: Could not find video decoder, key frames will not be honored\n");
+    }
 
-  if (avcodec_open(video_stream->codec, codec) < 0) 
-  {
-    fprintf(stderr, "Segmenter error: Could not open video decoder, key frames will not be honored\n");
+    if (avcodec_open(video_stream->codec, codec) < 0) 
+    {
+      fprintf(stderr, "Segmenter error: Could not open video decoder, key frames will not be honored\n");
+    }
   }
 
   unsigned int output_index = 1;
@@ -311,7 +314,10 @@ int main(int argc, char **argv)
 
   av_write_trailer(output_context);
 
-  avcodec_close(video_stream->codec);
+  if (video_index >= 0) 
+  {
+    avcodec_close(video_stream->codec);
+  }
 
   for(i = 0; i < output_context->nb_streams; i++) 
   {
