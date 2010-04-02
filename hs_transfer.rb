@@ -48,13 +48,12 @@ class HSTransfer
     @transfer_thread = Thread.new do
       @log.info('Transfer thread started');
       while (value = @transfer_queue.pop)
-        @log.info('Transfer initiated');
-        @log.debug(value)
+        @log.info("Transfer initiated with value = *#{value}*");
 
         if value == QUIT
           break
         elsif value == MULTIRATE_INDEX
-          create_create_and_transfer_multirate_index
+          create_and_transfer_multirate_index
         else
           begin
             create_index_and_run_transfer(value)
@@ -99,6 +98,7 @@ class HSTransfer
   private
 
   def create_and_transfer_multirate_index
+    @log.debug('Creating multirate index')
     File.open("tmp.index.multi.m3u8", 'w') do |index_file|
       index_file.write("#EXTM3U\n")
 
@@ -110,6 +110,7 @@ class HSTransfer
       end
     end
 
+    @log.debug('Transfering multirate index')
     transfer_file("tmp.index.multi.m3u8", "#{@config["index_prefix"]}_multi.m3u8")
   end
 
