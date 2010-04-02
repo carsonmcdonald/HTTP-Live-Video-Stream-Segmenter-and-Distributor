@@ -173,7 +173,7 @@ class HSTransfer
          require 'right_aws'
          s3 = RightAws::S3Interface.new(transfer_config['aws_api_key'], transfer_config['aws_api_secret'])
 
-         content_type = source_file =~ /.*\.m3u8$/ ? 'application/x-mpegURL' : 'video/MP2T'
+         content_type = source_file =~ /.*\.m3u8$/ ? 'application/vnd.apple.mpegurl' : 'video/MP2T'
 
          @log.debug("Content type: #{content_type}")
 
