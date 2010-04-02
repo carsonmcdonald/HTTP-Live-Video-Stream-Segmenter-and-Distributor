@@ -16,6 +16,9 @@ input_location: 'http://localhost:8080/'
 segment_length: 10 
 
 # this is the URL where the stream (ts) files will end up
+# if this location is the same as the location where the m3u8 
+# index is then leave it blank
+# url_prefix: ''
 url_prefix: 'http://192.168.1.1/streamingvideo/'
 
 # how many segments to keep in the index
