@@ -129,7 +129,7 @@ class HSTransfer
         end
       end
 
-      index_file.write("#EXT-X-ENDLIST") if stream_end
+      index_file.write("#EXT-X-ENDLIST\n") if stream_end
     end
 
     @log.debug('Done creating index');
