@@ -46,7 +46,10 @@ class HSEncoder
 
   def stop_encoding
     @log.info("Stoping encoder.")
-    @stop_stdin.print 'q' if !@stop_stdin.nil?
+    begin
+      @stop_stdin.print 'q' if !@stop_stdin.nil?
+    rescue
+    end
   end
 
   private 
@@ -161,7 +164,10 @@ class HSEncoder
         @log.error("Master encoding error: " + $!)
 
         encoding_pipes.each do |out|
-          out.close
+          begin
+            out.close
+          rescue
+          end
         end
       end
 
