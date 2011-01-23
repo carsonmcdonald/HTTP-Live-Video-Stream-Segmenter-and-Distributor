@@ -128,12 +128,12 @@ class HSEncoder
   def process_encoding(encoding_profile, input_location, encoding_pipes)
     encoding_config = @config[encoding_profile]
 
-    command_ffmpeg = encoding_config['ffmpeg_command'] % [input_location, @config['segmenter_binary'], @config['segment_length'], @config['temp_dir'], @config['segment_prefix'] + '_' + encoding_profile, encoding_profile]
+    command_ffmpeg = encoding_config['ffmpeg_command'] % [input_location, @config['segmenter_binary'], @config['segment_length'], @config['temp_dir'], "#{@config['segment_prefix']}_#{encoding_profile}", encoding_profile]
 
     begin
       execute_ffmpeg_and_segmenter(command_ffmpeg, encoding_profile, encoding_pipes)
     rescue
-      @log.error("Encoding error: " + $!)
+      @log.error("Encoding error: #{$!}")
     end
   end
 
@@ -146,11 +146,11 @@ class HSEncoder
     # Start a new thread for each encoding profile
     @config['encoding_profile'].each do |profile_name|
       encoding_threads << Thread.new do
-        @log.info('Encoding thread started: ' + profile_name);
+        @log.info("Encoding thread started: #{profile_name}");
 
         process_encoding(profile_name, '-', encoding_pipes)
 
-        @log.info('Encoding thread terminated: ' + profile_name);
+        @log.info("Encoding thread terminated: #{profile_name}");
       end
     end
 
@@ -161,7 +161,7 @@ class HSEncoder
       begin
         process_master_encoding(encoding_pipes)
       rescue
-        @log.error("Master encoding error: " + $!)
+        @log.error("Master encoding error: #{$!}")
 
         encoding_pipes.each do |out|
           begin
