@@ -55,7 +55,7 @@ class HSEncoder
   private 
 
   def process_master_encoding(encoding_pipes)
-    command = @config['source_command'] % @config['input_location']
+    command = "#{@config['source_command']} #{@config['input_location']}"
 
     @log.debug("Executing: #{command}")
 
