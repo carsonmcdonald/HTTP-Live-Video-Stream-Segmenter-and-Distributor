@@ -154,7 +154,7 @@ class HSTransfer
 
      case transfer_config['transfer_type']
        when 'copy'
-         File.copy(source_file, "#{transfer_config['directory']}/#{destination_file}")
+         FileUtils.copy(source_file, "#{transfer_config['directory']}/#{destination_file}")
        when 'ftp'
          require 'net/ftp'
          Net::FTP.open(transfer_config['remote_host']) do |ftp|
