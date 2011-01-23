@@ -22,6 +22,8 @@ require 'thread'
 require 'fileutils'
 require 'open3'
 
+class HSEncoder::CommandExecutionException < ::StandardError; end
+
 class HSEncoder
 
   def initialize(log, config, hs_transfer)
