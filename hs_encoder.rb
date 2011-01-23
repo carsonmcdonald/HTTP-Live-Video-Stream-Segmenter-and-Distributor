@@ -91,7 +91,7 @@ class HSEncoder
       out.close
     end
 
-    raise CommandExecutionException if $?.exitstatus != 0
+    raise CommandExecutionException if $?.nil?
   end
 
   def execute_ffmpeg_and_segmenter(command, encoding_profile, encoding_pipes)
@@ -122,7 +122,7 @@ class HSEncoder
 
     @log.debug("Return code from #{encoding_profile}: #{$?}")
 
-    raise CommandExecutionException if $?.exitstatus != 0
+    raise CommandExecutionException if $?.nil?
   end
 
   def process_encoding(encoding_profile, input_location, encoding_pipes)
