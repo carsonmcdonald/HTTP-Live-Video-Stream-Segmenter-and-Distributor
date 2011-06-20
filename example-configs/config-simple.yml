@@ -78,3 +78,9 @@ scp_dev:
 copy_dev:
   transfer_type: 'copy'
   directory: '/var/www/html/streamingvideo'
+  
+cf_dev:
+  transfer_type: 'cf'
+  container: 'container'
+  username: 'username'
+  api_key: 'api_key'
