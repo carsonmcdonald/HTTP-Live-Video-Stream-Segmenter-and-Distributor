@@ -84,3 +84,5 @@ cf_dev:
   container: 'container'
   username: 'username'
   api_key: 'api_key'
+  key_prefix: 'stream0001'
+  
