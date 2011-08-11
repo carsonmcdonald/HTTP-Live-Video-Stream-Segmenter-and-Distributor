@@ -13,6 +13,7 @@ The project includes a ruby script and a C program that use FFMpeg to encode and
 
 - Creates both single and variable bitrate outputs
 - Transfer encoded segments via copy, FTP, SCP or transfer to AWS S3
+- Implements failover protection when using multiple media servers
 - Sending the INT signal to the segmenter process will cause it to terminate gracefully 
 
 ## REQUIREMENTS
@@ -24,6 +25,9 @@ FFMpeg is the primary external requirement for the ruby script. The segmenter ne
 
 - *RightScale AWS*
 	See http://rubyforge.org/projects/rightscale for more information. To install run gem install right_aws
+	
+Even if the RubyGems are not needed, RubyGems must be installed
+	
 
 ## INSTALL
 
