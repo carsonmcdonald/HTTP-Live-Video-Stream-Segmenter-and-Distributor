@@ -17,12 +17,12 @@
 #
 
 require 'rubygems'
-require 'fileutils'
 
 class HSTransfer
 
   QUIT='quit'
   MULTIRATE_INDEX='mr_index'
+
   def self.init_and_start_transfer_thread(log, config)
     hstransfer = HSTransfer.new(log, config)
     hstransfer.start_transfer_thread
@@ -172,7 +172,6 @@ class HSTransfer
     transfer_configs.each do |transfer_config|
       case transfer_config['transfer_type']
       when 'copy'
-        #FileUtils.cp(source_file, transfer_config['directory'] + '/' + destination_file)
         File.copy(source_file, transfer_config['directory'] + '/' + destination_file)
       when 'ftp'
         require 'net/ftp'
@@ -202,6 +201,7 @@ class HSTransfer
       end
 
     end
+    
     File.unlink(source_file)
   end
 end
