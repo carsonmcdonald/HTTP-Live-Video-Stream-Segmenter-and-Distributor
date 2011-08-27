@@ -22,7 +22,8 @@ segment_length: 10
 url_prefix: 'http://192.168.1.1/streamingvideo/'
 
 # how many segments to keep in the index
-index_segment_count: 15
+#index_segment_count: 15
+index_segment_count: 100000
 
 # this command is used for multirate encodings and is what pushes the encoders
 source_command: 'cat %s'
