@@ -67,7 +67,7 @@ static AVStream *add_output_stream(AVFormatContext *output_format_context, AVStr
 
   switch (input_codec_context->codec_type) 
   {
-    case CODEC_TYPE_AUDIO:
+    case AVMEDIA_TYPE_AUDIO:
       output_codec_context->channel_layout = input_codec_context->channel_layout;
       output_codec_context->sample_rate = input_codec_context->sample_rate;
       output_codec_context->channels = input_codec_context->channels;
@@ -81,7 +81,7 @@ static AVStream *add_output_stream(AVFormatContext *output_format_context, AVStr
         output_codec_context->block_align = input_codec_context->block_align;
       }
       break;
-    case CODEC_TYPE_VIDEO:
+    case AVMEDIA_TYPE_VIDEO:
       output_codec_context->pix_fmt = input_codec_context->pix_fmt;
       output_codec_context->width = input_codec_context->width;
       output_codec_context->height = input_codec_context->height;
@@ -159,7 +159,7 @@ int main(int argc, char **argv)
     exit(1);
   }
 
-#if LIBAVFORMAT_VERSION_MAJOR >= 52 && LIBAVFORMAT_VERSION_MINOR >= 45
+#if LIBAVFORMAT_VERSION_MAJOR > 52 || (LIBAVFORMAT_VERSION_MAJOR == 52 && LIBAVFORMAT_VERSION_MINOR >= 45)
   AVOutputFormat *output_format = av_guess_format("mpegts", NULL, NULL);
 #else
   AVOutputFormat *output_format = guess_format("mpegts", NULL, NULL);
@@ -192,12 +192,12 @@ int main(int argc, char **argv)
   for (i = 0; i < input_context->nb_streams && (video_index < 0 || audio_index < 0); i++) 
   {
     switch (input_context->streams[i]->codec->codec_type) {
-      case CODEC_TYPE_VIDEO:
+      case AVMEDIA_TYPE_VIDEO:
         video_index = i;
         input_context->streams[i]->discard = AVDISCARD_NONE;
         video_stream = add_output_stream(output_context, input_context->streams[i]);
         break;
-      case CODEC_TYPE_AUDIO:
+      case AVMEDIA_TYPE_AUDIO:
         audio_index = i;
         input_context->streams[i]->discard = AVDISCARD_NONE;
         audio_stream = add_output_stream(output_context, input_context->streams[i]);
