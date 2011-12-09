@@ -74,7 +74,7 @@ class HSConfig
       raise 
     end
 
-    if !File.readable? config['input_location']
+    if !config['input_location'].match(/^udp:/) and !File.readable? config['input_location']
       log.error("The input file can not be read: #{config['input_location']}")
       raise 
     end
