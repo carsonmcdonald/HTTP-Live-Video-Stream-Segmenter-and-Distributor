@@ -67,7 +67,7 @@ static AVStream *add_output_stream(AVFormatContext *output_format_context, AVStr
 
   switch (input_codec_context->codec_type) 
   {
-    case CODEC_TYPE_AUDIO:
+    case AVMEDIA_TYPE_AUDIO:
       output_codec_context->channel_layout = input_codec_context->channel_layout;
       output_codec_context->sample_rate = input_codec_context->sample_rate;
       output_codec_context->channels = input_codec_context->channels;
@@ -81,7 +81,7 @@ static AVStream *add_output_stream(AVFormatContext *output_format_context, AVStr
         output_codec_context->block_align = input_codec_context->block_align;
       }
       break;
-    case CODEC_TYPE_VIDEO:
+    case AVMEDIA_TYPE_VIDEO:
       output_codec_context->pix_fmt = input_codec_context->pix_fmt;
       output_codec_context->width = input_codec_context->width;
       output_codec_context->height = input_codec_context->height;
@@ -159,7 +159,7 @@ int main(int argc, char **argv)
     exit(1);
   }
 
-#if LIBAVFORMAT_VERSION_MAJOR >= 52 && LIBAVFORMAT_VERSION_MINOR >= 45
+#if LIBAVFORMAT_VERSION_MAJOR > 52 || (LIBAVFORMAT_VERSION_MAJOR == 52 && LIBAVFORMAT_VERSION_MINOR >= 45)
   AVOutputFormat *output_format = av_guess_format("mpegts", NULL, NULL);
 #else
   AVOutputFormat *output_format = guess_format("mpegts", NULL, NULL);
@@ -178,6 +178,9 @@ int main(int argc, char **argv)
   }
   output_context->oformat = output_format;
 
+  // Don't print warnings when PTS and DTS are identical.
+  //input_context->flags |= AVFMT_FLAG_IGNDTS;
+
   int video_index = -1;
   int audio_index = -1;
 
@@ -189,12 +192,12 @@ int main(int argc, char **argv)
   for (i = 0; i < input_context->nb_streams && (video_index < 0 || audio_index < 0); i++) 
   {
     switch (input_context->streams[i]->codec->codec_type) {
-      case CODEC_TYPE_VIDEO:
+      case AVMEDIA_TYPE_VIDEO:
         video_index = i;
         input_context->streams[i]->discard = AVDISCARD_NONE;
         video_stream = add_output_stream(output_context, input_context->streams[i]);
         break;
-      case CODEC_TYPE_AUDIO:
+      case AVMEDIA_TYPE_AUDIO:
         audio_index = i;
         input_context->streams[i]->discard = AVDISCARD_NONE;
         audio_stream = add_output_stream(output_context, input_context->streams[i]);
@@ -227,6 +230,11 @@ int main(int argc, char **argv)
     }
   }
 
+  if (video_stream->codec->ticks_per_frame > 1) 
+  {
+    video_stream->codec->time_base.num *= video_stream->codec->ticks_per_frame;
+  }
+
   unsigned int output_index = 1;
   snprintf(output_filename, strlen(config.temp_directory) + 1 + strlen(config.filename_prefix) + 10, "%s/%s-%05u.ts", config.temp_directory, config.filename_prefix, output_index++);
   if (url_fopen(&output_context->pb, output_filename, URL_WRONLY) < 0) 
@@ -240,6 +248,10 @@ int main(int argc, char **argv)
     fprintf(stderr, "Segmenter error: Could not write mpegts header to first output file\n");
     exit(1);
   }
+
+  // Track initial PTS values so we can subtract them out (removing aduio/video delay, since they seem incorrect).
+  int64_t initial_audio_pts = -1;
+  int64_t initial_video_pts = -1;
 
   unsigned int first_segment = 1;
   unsigned int last_segment = 0;
@@ -264,13 +276,26 @@ int main(int argc, char **argv)
       break;
     }
 
-    if (packet.stream_index == video_index && (packet.flags & PKT_FLAG_KEY)) 
+    if (packet.stream_index == video_index) 
     {
-      segment_time = (double)video_stream->pts.val * video_stream->time_base.num / video_stream->time_base.den;
-    }
-    else if (video_index < 0) 
+      if (initial_video_pts < 0) initial_video_pts = packet.pts;
+      packet.pts -= initial_video_pts;
+      packet.dts = packet.pts;
+      if (packet.flags & AV_PKT_FLAG_KEY) 
+      {
+        segment_time = (double)packet.pts * video_stream->time_base.num / video_stream->time_base.den;
+      } 
+      else 
+      {
+        segment_time = prev_segment_time;
+      }
+    } 
+    else if (packet.stream_index == audio_index) 
     {
-      segment_time = (double)audio_stream->pts.val * audio_stream->time_base.num / audio_stream->time_base.den;
+      if (initial_audio_pts < 0) initial_audio_pts = packet.pts;
+      packet.pts -= initial_audio_pts;
+      packet.dts = packet.pts;
+      segment_time = prev_segment_time;
     }
     else 
     {
@@ -295,7 +320,7 @@ int main(int argc, char **argv)
       prev_segment_time = segment_time;
     }
 
-    ret = av_interleaved_write_frame(output_context, &packet);
+    ret = av_write_frame(output_context, &packet);
     if (ret < 0) 
     {
       fprintf(stderr, "Segmenter error: Could not write frame of stream: %d\n", ret);
