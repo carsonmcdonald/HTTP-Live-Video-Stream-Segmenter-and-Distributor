@@ -13,6 +13,7 @@ The project includes a ruby script and a C program that use FFMpeg to encode and
 
 - Creates both single and variable bitrate outputs
 - Transfer encoded segments via copy, FTP, SCP or transfer to AWS S3
+- Implements load balance and failover protection when distributing to multiple media servers
 - Sending the INT signal to the segmenter process will cause it to terminate gracefully 
 
 ## REQUIREMENTS
@@ -24,6 +25,9 @@ FFMpeg is the primary external requirement for the ruby script. The segmenter ne
 
 - *RightScale AWS*
 	See http://rubyforge.org/projects/rightscale for more information. To install run gem install right_aws
+	
+RubyGems must be installed, even if the previous modules are not needed. 
+	
 
 ## INSTALL
 
@@ -62,7 +66,7 @@ A quick overview of the configuration options:
 - *encoding_profile* 
 	Specifies what encoding profile to use. It can be either a single entry, 'ep_128k', or an array, [ 'ep_128k', 'ep_386k', 'ep_512k' ], for multi-bitrate outputs.
 - *transfer_profile* 
-	The transfer profile to use after each segment is produced
+	The transfer profile to use after each segment is produced. It can be either a single entry, 'scp://foo.com/media', or an array, [ 'scp://foo.com/media', 'scp://bar.com/media' ], for load balancing/failover support.
 
 Encoding profiles are given a name and have two options following that name:
 
@@ -84,6 +88,8 @@ Transfer profiles are given a name in the same way encoding profiles are and hav
 	The AWS api key for S3
 - *aws_api_secret* 
 	The AWS api secret for S3
+- *url_prefix* 
+	This is the URL where the stream (ts) files will end up if multi-server/failover is enabled
 
 ### For FTP based transfers:
 - *transfer_type*
@@ -96,6 +102,8 @@ Transfer profiles are given a name in the same way encoding profiles are and hav
 	The password to use to log into the ftp site
 - *directory*
 	The directory to change to before starting the ftp upload
+- *url_prefix* 
+	This is the URL where the stream (ts) files will end up if multi-server/failover is enabled
 
 ### For SCP based transfers:
 - *transfer_type*
@@ -108,12 +116,17 @@ Transfer profiles are given a name in the same way encoding profiles are and hav
 	The password to use for scp. This is optional, if it isn't provided the scp will be done using a previously generated private key.
 - *directory*
 	The directory to change to before uploading the segment
+- *url_prefix* 
+	This is the URL where the stream (ts) files will end up if multi-server/failover is enabled
 
 ### For copy based transfers:
 - *transfer_type*
 	Must be set to 'copy'
 - *directory*
 	The destination directory to copy the segment to
+- *url_prefix* 
+	This is the URL where the stream (ts) files will end up if multi-server/failover is enabled
+
 
 ## LICENSE
 

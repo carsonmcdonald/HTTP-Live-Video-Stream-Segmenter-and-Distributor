@@ -67,7 +67,11 @@ static AVStream *add_output_stream(AVFormatContext *output_format_context, AVStr
 
   switch (input_codec_context->codec_type) 
   {
-    case CODEC_TYPE_AUDIO:
+#ifdef USE_OLD_FFMPEG
+      case CODEC_TYPE_AUDIO:
+#else
+    case AVMEDIA_TYPE_AUDIO:
+#endif
       output_codec_context->channel_layout = input_codec_context->channel_layout;
       output_codec_context->sample_rate = input_codec_context->sample_rate;
       output_codec_context->channels = input_codec_context->channels;
@@ -81,7 +85,11 @@ static AVStream *add_output_stream(AVFormatContext *output_format_context, AVStr
         output_codec_context->block_align = input_codec_context->block_align;
       }
       break;
+#ifdef USE_OLD_FFMPEG
     case CODEC_TYPE_VIDEO:
+#else
+    case AVMEDIA_TYPE_VIDEO:
+#endif
       output_codec_context->pix_fmt = input_codec_context->pix_fmt;
       output_codec_context->width = input_codec_context->width;
       output_codec_context->height = input_codec_context->height;
@@ -158,11 +166,14 @@ int main(int argc, char **argv)
     fprintf(stderr, "Segmenter error: Could not read stream information\n");
     exit(1);
   }
-
+#if USE_OLD_FFMPEG
 #if LIBAVFORMAT_VERSION_MAJOR >= 52 && LIBAVFORMAT_VERSION_MINOR >= 45
   AVOutputFormat *output_format = av_guess_format("mpegts", NULL, NULL);
 #else
   AVOutputFormat *output_format = guess_format("mpegts", NULL, NULL);
+#endif
+#else
+  AVOutputFormat *output_format = av_guess_format("mpegts", NULL, NULL);
 #endif
   if (!output_format) 
   {
@@ -189,12 +200,20 @@ int main(int argc, char **argv)
   for (i = 0; i < input_context->nb_streams && (video_index < 0 || audio_index < 0); i++) 
   {
     switch (input_context->streams[i]->codec->codec_type) {
-      case CODEC_TYPE_VIDEO:
+#if USE_OLD_FFMPEG
+    case CODEC_TYPE_VIDEO
+#else
+    case AVMEDIA_TYPE_VIDEO:
+#endif
         video_index = i;
         input_context->streams[i]->discard = AVDISCARD_NONE;
         video_stream = add_output_stream(output_context, input_context->streams[i]);
         break;
-      case CODEC_TYPE_AUDIO:
+#if USE_OLD_FFMPEG
+      case CODEC_TYPE_AUDIO
+#else
+      case AVMEDIA_TYPE_AUDIO:
+#endif
         audio_index = i;
         input_context->streams[i]->discard = AVDISCARD_NONE;
         audio_stream = add_output_stream(output_context, input_context->streams[i]);
@@ -210,9 +229,11 @@ int main(int argc, char **argv)
     fprintf(stderr, "Segmenter error: Invalid output format parameters\n");
     exit(1);
   }
-
+#if USE_OLD_FFMPEG
   dump_format(output_context, 0, config.filename_prefix, 1);
-
+#else
+  av_dump_format(output_context, 0, config.filename_prefix, 1);
+#endif
   if(video_index >= 0)
   {
     AVCodec *codec = avcodec_find_decoder(video_stream->codec->codec_id);
@@ -229,7 +250,11 @@ int main(int argc, char **argv)
 
   unsigned int output_index = 1;
   snprintf(output_filename, strlen(config.temp_directory) + 1 + strlen(config.filename_prefix) + 10, "%s/%s-%05u.ts", config.temp_directory, config.filename_prefix, output_index++);
+#if USE_OLD_FFMPEG
   if (url_fopen(&output_context->pb, output_filename, URL_WRONLY) < 0) 
+#else
+  if (avio_open(&output_context->pb, output_filename, URL_WRONLY) < 0)
+#endif
   {
     fprintf(stderr, "Segmenter error: Could not open '%s'\n", output_filename);
     exit(1);
@@ -263,12 +288,15 @@ int main(int argc, char **argv)
       av_free_packet(&packet);
       break;
     }
-
-    if (packet.stream_index == video_index && (packet.flags & PKT_FLAG_KEY)) 
+#if USE_OLD_FFMPEG
+    if (packet.stream_index == video_index && (packet.flags & PKT_FLAG_KEY))
+#else
+    if (packet.stream_index == video_index && (packet.flags & AV_PKT_FLAG_KEY))
+    #endif
     {
       segment_time = (double)video_stream->pts.val * video_stream->time_base.num / video_stream->time_base.den;
     }
-    else if (video_index < 0) 
+    else if (video_index < 0)
     {
       segment_time = (double)audio_stream->pts.val * audio_stream->time_base.num / audio_stream->time_base.den;
     }
@@ -280,13 +308,23 @@ int main(int argc, char **argv)
     // done writing the current file?
     if (segment_time - prev_segment_time >= config.segment_length) 
     {
-      put_flush_packet(output_context->pb);
+#if USE_OLD_FFMPEG
+          put_flush_packet(output_context->pb);
       url_fclose(output_context->pb);
+#else
+      avio_flush(output_context->pb);
+      avio_close(output_context->pb);
+#endif
 
       output_transfer_command(first_segment, ++last_segment, 0, config.encoding_profile);
 
       snprintf(output_filename, strlen(config.temp_directory) + 1 + strlen(config.filename_prefix) + 10, "%s/%s-%05u.ts", config.temp_directory, config.filename_prefix, output_index++);
-      if (url_fopen(&output_context->pb, output_filename, URL_WRONLY) < 0) 
+ #if USE_OLD_FFMPEG
+       if (url_fopen(&output_context->pb, output_filename, URL_WRONLY) < 0)
+
+#else
+      if (avio_open(&output_context->pb, output_filename, URL_WRONLY) < 0)
+#endif
       {
         fprintf(stderr, "Segmenter error: Could not open '%s'\n", output_filename);
         break;
@@ -322,8 +360,11 @@ int main(int argc, char **argv)
     av_freep(&output_context->streams[i]->codec);
     av_freep(&output_context->streams[i]);
   }
-
+#if USE_OLD_FFMPEG
   url_fclose(output_context->pb);
+#else
+  avio_close(output_context->pb);
+#endif
   av_free(output_context);
 
   output_transfer_command(first_segment, ++last_segment, 1, config.encoding_profile);

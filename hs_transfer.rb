@@ -104,9 +104,18 @@ class HSTransfer
 
       @config['encoding_profile'].each do |encoding_profile_name|
         encoding_profile = @config[encoding_profile_name]
-        index_file.write("#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=#{encoding_profile['bandwidth']}\n")
-        index_name = "%s_%s.m3u8" % [@config['index_prefix'], encoding_profile_name]
-        index_file.write("#{@config['url_prefix']}#{index_name}\n")
+        if @config['transfer_profile'].is_a?(Array)
+          @config['transfer_profile'].each do |tpname|
+            tp = @config[tpname]
+            index_file.write("#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=#{encoding_profile['bandwidth']}\n")
+            index_name = "%s_%s.m3u8" % [@config['index_prefix'], encoding_profile_name]
+            index_file.write("#{tp['url_prefix']}#{index_name}\n")
+          end
+        else
+          index_file.write("#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=#{encoding_profile['bandwidth']}\n")
+          index_name = "%s_%s.m3u8" % [@config['index_prefix'], encoding_profile_name]
+          index_file.write("#{@config['url_prefix']}#{index_name}\n")
+        end
       end
     end
 
@@ -150,39 +159,49 @@ class HSTransfer
   end
 
   def transfer_file(source_file, destination_file)
-     transfer_config = @config[@config['transfer_profile']]
+    transfer_configs = []
+    transfer_profile = @config['transfer_profile']
+    if transfer_profile.is_a?(Array) then
+      transfer_profile.each do |tp|
+        transfer_configs << @config[tp]
+      end
+    else
+      transfer_configs << @config[transfer_profile]
+    end
 
-     case transfer_config['transfer_type']
-       when 'copy'
-         File.copy(source_file, transfer_config['directory'] + '/' + destination_file)
-       when 'ftp'
-         require 'net/ftp'
-         Net::FTP.open(transfer_config['remote_host']) do |ftp|
-           ftp.login(transfer_config['user_name'], transfer_config['password'])
-           files = ftp.chdir(transfer_config['directory'])
-           ftp.putbinaryfile(source_file, destination_file)
-         end
-       when 'scp'
-         require 'net/scp'
-         if transfer_config.has_key?('password')
-           Net::SCP.upload!(transfer_config['remote_host'], transfer_config['user_name'], source_file, transfer_config['directory'] + '/' + destination_file, :password => transfer_config['password'])
-         else
-           Net::SCP.upload!(transfer_config['remote_host'], transfer_config['user_name'], source_file, transfer_config['directory'] + '/' + destination_file)
-         end
-       when 's3'
-         require 'right_aws'
-         s3 = RightAws::S3Interface.new(transfer_config['aws_api_key'], transfer_config['aws_api_secret'])
+    transfer_configs.each do |transfer_config|
+      case transfer_config['transfer_type']
+      when 'copy'
+        File.copy(source_file, transfer_config['directory'] + '/' + destination_file)
+      when 'ftp'
+        require 'net/ftp'
+        Net::FTP.open(transfer_config['remote_host']) do |ftp|
+          ftp.login(transfer_config['user_name'], transfer_config['password'])
+          files = ftp.chdir(transfer_config['directory'])
+          ftp.putbinaryfile(source_file, destination_file)
+        end
+      when 'scp'
+        require 'net/scp'
+        if transfer_config.has_key?('password')
+          Net::SCP.upload!(transfer_config['remote_host'], transfer_config['user_name'], source_file, transfer_config['directory'] + '/' + destination_file, :password => transfer_config['password'])
+        else
+          Net::SCP.upload!(transfer_config['remote_host'], transfer_config['user_name'], source_file, transfer_config['directory'] + '/' + destination_file)
+        end
+      when 's3'
+        require 'right_aws'
+        s3 = RightAws::S3Interface.new(transfer_config['aws_api_key'], transfer_config['aws_api_secret'])
 
-         content_type = source_file =~ /.*\.m3u8$/ ? 'application/vnd.apple.mpegurl' : 'video/MP2T'
+        content_type = source_file =~ /.*\.m3u8$/ ? 'application/vnd.apple.mpegurl' : 'video/MP2T'
 
-         @log.debug("Content type: #{content_type}")
+        @log.debug("Content type: #{content_type}")
 
-         s3.put(transfer_config['bucket_name'], "#{transfer_config['key_prefix']}/#{destination_file}", File.open(source_file), {'x-amz-acl' => 'public-read', 'content-type' => content_type})
-       else
-         @log.error("Unknown transfer type: #{transfer_config['transfer_type']}")
-     end
+        s3.put(transfer_config['bucket_name'], "#{transfer_config['key_prefix']}/#{destination_file}", File.open(source_file), {'x-amz-acl' => 'public-read', 'content-type' => content_type})
+      else
+        @log.error("Unknown transfer type: #{transfer_config['transfer_type']}")
+      end
 
-     File.unlink(source_file)
+    end
+    
+    File.unlink(source_file)
   end
-
 end
