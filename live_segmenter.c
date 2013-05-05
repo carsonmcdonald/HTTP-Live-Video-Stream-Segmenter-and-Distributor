@@ -38,7 +38,7 @@ static AVStream *add_output_stream(AVFormatContext *output_format_context, AVStr
   AVCodecContext *output_codec_context;
   AVStream *output_stream;
 
-  output_stream = av_new_stream(output_format_context, 0);
+  output_stream = avformat_new_stream(output_format_context, 0);
   if (!output_stream) 
   {
     fprintf(stderr, "Segmenter error: Could not allocate stream\n");
@@ -67,7 +67,7 @@ static AVStream *add_output_stream(AVFormatContext *output_format_context, AVStr
 
   switch (input_codec_context->codec_type) 
   {
-    case CODEC_TYPE_AUDIO:
+    case AVMEDIA_TYPE_AUDIO:
       output_codec_context->channel_layout = input_codec_context->channel_layout;
       output_codec_context->sample_rate = input_codec_context->sample_rate;
       output_codec_context->channels = input_codec_context->channels;
@@ -81,7 +81,7 @@ static AVStream *add_output_stream(AVFormatContext *output_format_context, AVStr
         output_codec_context->block_align = input_codec_context->block_align;
       }
       break;
-    case CODEC_TYPE_VIDEO:
+    case AVMEDIA_TYPE_VIDEO:
       output_codec_context->pix_fmt = input_codec_context->pix_fmt;
       output_codec_context->width = input_codec_context->width;
       output_codec_context->height = input_codec_context->height;
@@ -146,24 +146,24 @@ int main(int argc, char **argv)
   }
 
   AVFormatContext *input_context = NULL;
-  int ret = av_open_input_file(&input_context, config.input_filename, input_format, 0, NULL);
+  int ret = avformat_open_input(&input_context, config.input_filename, input_format, NULL);
   if (ret != 0) 
   {
     fprintf(stderr, "Segmenter error: Could not open input file, make sure it is an mpegts file: %d\n", ret);
     exit(1);
   }
 
-  if (av_find_stream_info(input_context) < 0) 
+  if (avformat_find_stream_info(input_context, NULL) < 0)
   {
     fprintf(stderr, "Segmenter error: Could not read stream information\n");
     exit(1);
   }
 
-#if LIBAVFORMAT_VERSION_MAJOR >= 52 && LIBAVFORMAT_VERSION_MINOR >= 45
+//#if LIBAVFORMAT_VERSION_MAJOR >= 52 && LIBAVFORMAT_VERSION_MINOR >= 45
   AVOutputFormat *output_format = av_guess_format("mpegts", NULL, NULL);
-#else
-  AVOutputFormat *output_format = guess_format("mpegts", NULL, NULL);
-#endif
+//#else
+ // AVOutputFormat *output_format = guess_format("mpegts", NULL, NULL);
+//#endif
   if (!output_format) 
   {
     fprintf(stderr, "Segmenter error: Could not find MPEG-TS muxer\n");
@@ -189,12 +189,12 @@ int main(int argc, char **argv)
   for (i = 0; i < input_context->nb_streams && (video_index < 0 || audio_index < 0); i++) 
   {
     switch (input_context->streams[i]->codec->codec_type) {
-      case CODEC_TYPE_VIDEO:
+      case AVMEDIA_TYPE_VIDEO:
         video_index = i;
         input_context->streams[i]->discard = AVDISCARD_NONE;
         video_stream = add_output_stream(output_context, input_context->streams[i]);
         break;
-      case CODEC_TYPE_AUDIO:
+      case AVMEDIA_TYPE_AUDIO:
         audio_index = i;
         input_context->streams[i]->discard = AVDISCARD_NONE;
         audio_stream = add_output_stream(output_context, input_context->streams[i]);
@@ -205,13 +205,13 @@ int main(int argc, char **argv)
     }
   }
 
-  if (av_set_parameters(output_context, NULL) < 0) 
-  {
-    fprintf(stderr, "Segmenter error: Invalid output format parameters\n");
-    exit(1);
-  }
+// if (av_set_parameters(output_context, NULL) < 0)
+//  {
+//    fprintf(stderr, "Segmenter error: Invalid output format parameters\n");
+//    exit(1);
+//  }
 
-  dump_format(output_context, 0, config.filename_prefix, 1);
+  av_dump_format(output_context, 0, config.filename_prefix, 1);
 
   if(video_index >= 0)
   {
@@ -221,7 +221,7 @@ int main(int argc, char **argv)
       fprintf(stderr, "Segmenter error: Could not find video decoder, key frames will not be honored\n");
     }
 
-    if (avcodec_open(video_stream->codec, codec) < 0) 
+    if (avcodec_open2(video_stream->codec, codec, NULL) < 0)
     {
       fprintf(stderr, "Segmenter error: Could not open video decoder, key frames will not be honored\n");
     }
@@ -229,13 +229,14 @@ int main(int argc, char **argv)
 
   unsigned int output_index = 1;
   snprintf(output_filename, strlen(config.temp_directory) + 1 + strlen(config.filename_prefix) + 10, "%s/%s-%05u.ts", config.temp_directory, config.filename_prefix, output_index++);
-  if (url_fopen(&output_context->pb, output_filename, URL_WRONLY) < 0) 
+ 
+  if (avio_open(&output_context->pb, output_filename, AVIO_FLAG_WRITE) < 0) 
   {
     fprintf(stderr, "Segmenter error: Could not open '%s'\n", output_filename);
     exit(1);
   }
 
-  if (av_write_header(output_context)) 
+  if (avformat_write_header(output_context, NULL))
   {
     fprintf(stderr, "Segmenter error: Could not write mpegts header to first output file\n");
     exit(1);
@@ -264,7 +265,7 @@ int main(int argc, char **argv)
       break;
     }
 
-    if (packet.stream_index == video_index && (packet.flags & PKT_FLAG_KEY)) 
+    if (packet.stream_index == video_index && (packet.flags & AV_PKT_FLAG_KEY))
     {
       segment_time = (double)video_stream->pts.val * video_stream->time_base.num / video_stream->time_base.den;
     }
@@ -280,13 +281,13 @@ int main(int argc, char **argv)
     // done writing the current file?
     if (segment_time - prev_segment_time >= config.segment_length) 
     {
-      put_flush_packet(output_context->pb);
-      url_fclose(output_context->pb);
+      avio_flush(output_context->pb);
+      avio_close(output_context->pb);
 
       output_transfer_command(first_segment, ++last_segment, 0, config.encoding_profile);
 
       snprintf(output_filename, strlen(config.temp_directory) + 1 + strlen(config.filename_prefix) + 10, "%s/%s-%05u.ts", config.temp_directory, config.filename_prefix, output_index++);
-      if (url_fopen(&output_context->pb, output_filename, URL_WRONLY) < 0) 
+      if (avio_open(&output_context->pb, output_filename, AVIO_FLAG_WRITE) < 0)
       {
         fprintf(stderr, "Segmenter error: Could not open '%s'\n", output_filename);
         break;
@@ -323,7 +324,7 @@ int main(int argc, char **argv)
     av_freep(&output_context->streams[i]);
   }
 
-  url_fclose(output_context->pb);
+  avio_close(output_context->pb);
   av_free(output_context);
 
   output_transfer_command(first_segment, ++last_segment, 1, config.encoding_profile);
