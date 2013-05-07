@@ -31,7 +31,7 @@ source_command: 'cat %s'
 segmenter_binary: './live_segmenter'
 
 # the encoding profile to use
-encoding_profile: [ 'cell_4x3_150k', 'cell_4x3_240k', 'wifi_4x3_440k', 'wifi_4x3_640' ]
+encoding_profile: [ 'cell_4x3_150k', 'cell_4x3_240k', 'wifi_4x3_440k', 'wifi_4x3_640k' ]
 
 # The upload profile to use
 transfer_profile: 'copy_dev'
