@@ -94,6 +94,15 @@ class HSTransfer
       return false
     end
   end
+  
+  def self.can_cf
+    begin
+      require 'cloudfiles'
+      return true
+    rescue LoadError
+      return false
+    end
+  end
 
   private
 
@@ -178,6 +187,14 @@ class HSTransfer
          @log.debug("Content type: #{content_type}")
 
          s3.put(transfer_config['bucket_name'], "#{transfer_config['key_prefix']}/#{destination_file}", File.open(source_file), {'x-amz-acl' => 'public-read', 'content-type' => content_type})
+    	when 'cf'
+         require 'cloudfiles'
+         cf = CloudFiles::Connection.new(:username => transfer_config['username'], :api_key => transfer_config['api_key'])
+  
+         container = cf.container(transfer_config['container'])
+         
+         object = container.create_object "#{transfer_config['key_prefix']}/#{destination_file}", false
+         object.write File.open(source_file)
        else
          @log.error("Unknown transfer type: #{transfer_config['transfer_type']}")
      end
