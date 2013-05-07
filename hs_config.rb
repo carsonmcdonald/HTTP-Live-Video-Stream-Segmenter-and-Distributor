@@ -104,7 +104,8 @@ class HSConfig
     end
 
     if config[config['transfer_profile']]['transfer_type'] != 'ftp' and config[config['transfer_profile']]['transfer_type'] != 'scp' and
-       config[config['transfer_profile']]['transfer_type'] != 's3' and config[config['transfer_profile']]['transfer_type'] != 'copy'
+       config[config['transfer_profile']]['transfer_type'] != 's3' and config[config['transfer_profile']]['transfer_type'] != 'copy' and
+       config[config['transfer_profile']]['transfer_type'] != 'cf' 
       log.error("The given transfer type is not known: #{config[config['transfer_profile']]['transfer_type']}")
       raise 
     end
@@ -120,6 +121,11 @@ class HSConfig
     end
 
     if !HSTransfer::can_s3 and config[config['transfer_profile']]['transfer_type'] == 's3'
+      log.error("The given transfer type is not available: #{config[config['transfer_profile']]['transfer_type']}")
+      raise 
+    end
+    
+    if !HSTransfer::can_cf and config[config['transfer_profile']]['transfer_type'] == 'cf'
       log.error("The given transfer type is not available: #{config[config['transfer_profile']]['transfer_type']}")
       raise 
     end
