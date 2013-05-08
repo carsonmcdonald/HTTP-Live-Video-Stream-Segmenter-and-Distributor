@@ -40,19 +40,19 @@ transfer_profile: 'copy_dev'
 # Encoding profiles
 #
 cell_4x3_150k: 
-  ffmpeg_command: "ffmpeg -er 4 -i %s -f mpegts -acodec libmp3lame -ar 32000 -ab 48k -s 400x300 -vcodec libx264 -b 110k -flags +loop+mv4 -cmp 256 -partitions +parti4x4+partp8x8+partb8x8 -subq 7 -trellis 1 -refs 5 -coder 0 -me_range 16 -keyint_min 25 -sc_threshold 40 -i_qfactor 0.71 -bt 110k -maxrate 110k -bufsize 110k -rc_eq 'blurCplx^(1-qComp)' -qcomp 0.6 -qmin 10 -qmax 51 -qdiff 4 -level 30 -aspect 4:3 -r 10 -g 30 -async 2 - | %s %s %s %s %s"
+  ffmpeg_command: "ffmpeg -i %s -f mpegts -acodec libmp3lame -ar 32000 -ab 48k -s 400x300 -vcodec libx264 -b 110k -flags +loop+mv4 -cmp 256 -partitions +parti4x4+partp8x8+partb8x8 -subq 7 -trellis 1 -refs 5 -coder 0 -me_range 16 -keyint_min 25 -sc_threshold 40 -i_qfactor 0.71 -bt 110k -maxrate 110k -bufsize 110k -rc_eq 'blurCplx^(1-qComp)' -qcomp 0.6 -qmin 10 -qmax 51 -qdiff 4 -level 30 -aspect 4:3 -r 10 -g 30 -async 2 - | %s %s %s %s %s"
   bandwidth: 158000
 
 cell_4x3_240k: 
-  ffmpeg_command: "ffmpeg -er 4 -i %s -f mpegts -acodec libmp3lame -ar 32000 -ab 48k -s 400x300 -vcodec libx264 -b 200k -flags +loop+mv4 -cmp 256 -partitions +parti4x4+partp8x8+partb8x8 -subq 7 -trellis 1 -refs 5 -coder 0 -me_range 16 -keyint_min 25 -sc_threshold 40 -i_qfactor 0.71 -bt 200k -maxrate 200k -bufsize 200k -rc_eq 'blurCplx^(1-qComp)' -qcomp 0.6 -qmin 10 -qmax 51 -qdiff 4 -level 30 -aspect 4:3 -r 15 -g 45 -async 2 - | %s %s %s %s %s"
+  ffmpeg_command: "ffmpeg -i %s -f mpegts -acodec libmp3lame -ar 32000 -ab 48k -s 400x300 -vcodec libx264 -b 200k -flags +loop+mv4 -cmp 256 -partitions +parti4x4+partp8x8+partb8x8 -subq 7 -trellis 1 -refs 5 -coder 0 -me_range 16 -keyint_min 25 -sc_threshold 40 -i_qfactor 0.71 -bt 200k -maxrate 200k -bufsize 200k -rc_eq 'blurCplx^(1-qComp)' -qcomp 0.6 -qmin 10 -qmax 51 -qdiff 4 -level 30 -aspect 4:3 -r 15 -g 45 -async 2 - | %s %s %s %s %s"
   bandwidth: 248000
 
 wifi_4x3_440k: 
-  ffmpeg_command: "ffmpeg -er 4 -i %s -f mpegts -acodec libmp3lame -ar 32000 -ab 48k -s 400x300 -vcodec libx264 -b 400k -flags +loop+mv4 -cmp 256 -partitions +parti4x4+partp8x8+partb8x8 -subq 7 -trellis 1 -refs 5 -coder 0 -me_range 16 -keyint_min 25 -sc_threshold 40 -i_qfactor 0.71 -bt 400k -maxrate 400k -bufsize 400k -rc_eq 'blurCplx^(1-qComp)' -qcomp 0.6 -qmin 10 -qmax 51 -qdiff 4 -level 30 -aspect 4:3 -r 30 -g 90 -async 2 - | %s %s %s %s %s"
+  ffmpeg_command: "ffmpeg -i %s -f mpegts -acodec libmp3lame -ar 32000 -ab 48k -s 400x300 -vcodec libx264 -b 400k -flags +loop+mv4 -cmp 256 -partitions +parti4x4+partp8x8+partb8x8 -subq 7 -trellis 1 -refs 5 -coder 0 -me_range 16 -keyint_min 25 -sc_threshold 40 -i_qfactor 0.71 -bt 400k -maxrate 400k -bufsize 400k -rc_eq 'blurCplx^(1-qComp)' -qcomp 0.6 -qmin 10 -qmax 51 -qdiff 4 -level 30 -aspect 4:3 -r 30 -g 90 -async 2 - | %s %s %s %s %s"
   bandwidth: 448000
 
 wifi_4x3_640k: 
-  ffmpeg_command: "ffmpeg -er 4 -i %s -f mpegts -acodec libmp3lame -ar 32000 -ab 48k -s 400x300 -vcodec libx264 -b 600k -flags +loop+mv4 -cmp 256 -partitions +parti4x4+partp8x8+partb8x8 -subq 7 -trellis 1 -refs 5 -coder 0 -me_range 16 -keyint_min 25 -sc_threshold 40 -i_qfactor 0.71 -bt 600k -maxrate 600k -bufsize 600k -rc_eq 'blurCplx^(1-qComp)' -qcomp 0.6 -qmin 10 -qmax 51 -qdiff 4 -level 30 -aspect 4:3 -r 30 -g 90 -async 2 - | %s %s %s %s %s"
+  ffmpeg_command: "ffmpeg -i %s -f mpegts -acodec libmp3lame -ar 32000 -ab 48k -s 400x300 -vcodec libx264 -b 600k -flags +loop+mv4 -cmp 256 -partitions +parti4x4+partp8x8+partb8x8 -subq 7 -trellis 1 -refs 5 -coder 0 -me_range 16 -keyint_min 25 -sc_threshold 40 -i_qfactor 0.71 -bt 600k -maxrate 600k -bufsize 600k -rc_eq 'blurCplx^(1-qComp)' -qcomp 0.6 -qmin 10 -qmax 51 -qdiff 4 -level 30 -aspect 4:3 -r 30 -g 90 -async 2 - | %s %s %s %s %s"
   bandwidth: 648000
 
 #
