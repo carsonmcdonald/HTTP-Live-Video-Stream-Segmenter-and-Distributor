@@ -133,7 +133,7 @@ class HSEncoder
     begin
       execute_ffmpeg_and_segmenter(command_ffmpeg, encoding_profile, encoding_pipes)
     rescue
-      @log.error("Encoding error: " + $!)
+      @log.error("Encoding error: #{$!}")
     end
   end
 
@@ -161,7 +161,7 @@ class HSEncoder
       begin
         process_master_encoding(encoding_pipes)
       rescue
-        @log.error("Master encoding error: " + $!)
+        @log.error("Master encoding error: #{$!}")
 
         encoding_pipes.each do |out|
           begin
