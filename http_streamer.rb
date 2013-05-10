@@ -16,6 +16,8 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #
 
+$LOAD_PATH.unshift File.dirname(__FILE__)
+
 require 'hs_transfer'
 require 'hs_config'
 require 'hs_encoder'
