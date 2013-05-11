@@ -117,7 +117,7 @@ Transfer profiles are given a name in the same way encoding profiles are and hav
 
 ## LICENSE
 
-Copyright (c) 2009 Carson McDonald
+Copyright (c) 2013 Carson McDonald
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License version 2
