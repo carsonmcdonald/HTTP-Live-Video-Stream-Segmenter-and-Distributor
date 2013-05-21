@@ -115,6 +115,18 @@ Transfer profiles are given a name in the same way encoding profiles are and hav
 - *directory*
 	The destination directory to copy the segment to
 
+### For Cloudfile based transfers:
+- *transfer_type*
+	Must be set to 'cf'
+- *username* 
+	The username for Cloudfile
+- *api_key* 
+	The api key for Cloudfile
+- *container* 
+	The container to put the results in
+- *key_prefix* 
+	A prefix to attach to the start of each segment stream0001
+
 ## LICENSE
 
 Copyright (c) 2009-2013 Carson McDonald
