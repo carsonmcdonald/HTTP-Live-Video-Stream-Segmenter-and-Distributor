@@ -19,7 +19,6 @@
 require 'hs_transfer'
 
 require 'thread'
-require 'ftools'
 require 'open3'
 
 class HSEncoder
