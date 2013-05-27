@@ -59,8 +59,9 @@ class HSEncoder
     @log.debug("Executing: #{command}")
 
     stderr_thread = nil
+    exit_status = -1
 
-    Open3.popen3(command) do |stdin, stdout, stderr|
+    Open3.popen3(command) do |stdin, stdout, stderr, wt|
       @stop_stdin = stdin
       stderr_thread = Thread.new do
         stderr.each("\r") do |line|
@@ -80,23 +81,27 @@ class HSEncoder
           out.print output
         end
       end
+
+      exit_status = wt.value.exitstatus
     end
 
     stderr_thread.join
 
-    @log.debug("Return code from master encoding: #{$?}")
+    @log.debug("Return code from master encoding: #{exit_status}")
 
     encoding_pipes.each do |out|
       out.close
     end
 
-    raise CommandExecutionException if $?.exitstatus != 0
+    raise CommandExecutionException if exit_status != 0
   end
 
   def execute_ffmpeg_and_segmenter(command, encoding_profile, encoding_pipes)
     @log.debug("Executing: #{command}")
 
-    Open3.popen3(command) do |stdin, stdout, stderr|
+    exit_status = -1
+
+    Open3.popen3(command) do |stdin, stdout, stderr, wt|
       if encoding_pipes != nil
         encoding_pipes << stdin
       else
@@ -117,11 +122,13 @@ class HSEncoder
           @log.error("Encoder #{encoding_profile}: #{line}")
         end
       end
+
+      exit_status = wt.value.exitstatus
     end
 
-    @log.debug("Return code from #{encoding_profile}: #{$?}")
+    @log.debug("Return code from #{encoding_profile}: #{exit_status}")
 
-    raise CommandExecutionException if $?.exitstatus != 0
+    raise CommandExecutionException if exit_status != 0
   end
 
   def process_encoding(encoding_profile, input_location, encoding_pipes)
