@@ -21,6 +21,8 @@ require 'hs_transfer'
 require 'thread'
 require 'open3'
 
+class CommandExecutionException < StandardError; end
+
 class HSEncoder
 
   def initialize(log, config, hs_transfer)
