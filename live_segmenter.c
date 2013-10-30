@@ -65,6 +65,11 @@ static AVStream *add_output_stream(AVFormatContext *output_format_context, AVStr
     output_codec_context->time_base = input_stream->time_base;
   }
 
+  if (output_format_context->oformat->flags & AVFMT_GLOBALHEADER) 
+  {
+      output_codec_context->flags |= CODEC_FLAG_GLOBAL_HEADER;
+  }
+
   switch (input_codec_context->codec_type) 
   {
     case AVMEDIA_TYPE_AUDIO:
@@ -86,11 +91,6 @@ static AVStream *add_output_stream(AVFormatContext *output_format_context, AVStr
       output_codec_context->width = input_codec_context->width;
       output_codec_context->height = input_codec_context->height;
       output_codec_context->has_b_frames = input_codec_context->has_b_frames;
-
-      if (output_format_context->oformat->flags & AVFMT_GLOBALHEADER) 
-      {
-          output_codec_context->flags |= CODEC_FLAG_GLOBAL_HEADER;
-      }
       break;
     default:
       break;
