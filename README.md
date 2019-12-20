@@ -36,7 +36,7 @@ You may copy the script and the segmenter binary to any location you want. You w
 A quick overview of the configuration options:
 
 - *temp_dir* 
-	Where the script will put segments before they are transfered to their final destination
+	Where the script will put segments before they are transferred to their final destination
 - *segment_prefix* 
 	The prefix added to each stream segment 
 - *index_prefix* 
